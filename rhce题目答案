@@ -1,0 +1,161 @@
+foundation.domain6.example.com
+  2 ###room9pc01-tedu-cn
+
+1 	getenforce
+	vim /etc/selinux/config
+2	vim /etc/ssh/sshd_config
+	DenyUsers *@*.my133t.org *@172.34.0.*
+	systemctl restart sshd
+3	vim /etc/bashrc
+	alias qstat='/bin/ps -Ao pid,tt,user,fname,rsz'
+	exit
+	gox
+	qstat
+
+4	systemctl restart firewalld
+	systemctl enable  firewalld
+	firewall-cmd --set-default-zone=trusted
+	firewall-cmd --permanent --zone=block   --add-source=172.34.0.0/24
+	firewall-cmd --permanent --zone=trusted --add-forward-port=port=5423:proto=tcp:toport=80
+	firewall-cmd --reload
+
+5	nmcli connection add con-name team0 type team ifname team0 config '{"runner":{"name":"activebackup"}}'
+	nmcli connection add con-name team0-1 type team-slave ifname eth1   master team0 
+	nmcli connection add con-name team0-2 type team-slave ifname eth2   master team0 
+	nmcli connection modify team0 ipv4.method manual ipv4.addresses '172.16.3.20/24' connection.autoconnect yes
+	nmcli connection up team0
+
+6	nmcli connection show
+	nmcli connection modify 'System eth0' ipv6.method manual ipv6.addresses '2003:ac18::305/64' 
+	nmcli connection up team0
+	hostnamectl set-hostname server0.example.com
+
+7	lab smtp-nullclient setup
+	vim /etc/postfix/main.cf
+myorigin = desktop0.example.com
+inet_interfaces = loopback-only
+mydestination =
+mynetworks = 127.0.0.0/8  [::1]/128
+relayhost = [smtp0.example.com]
+local_transport = error:local delivery disabled
+	systemctl restart postfix
+	systemctl enable postfix
+	echo 'Mail Data.正文' | mail -s 'Test1mail-s标题[-r发送]接收'  student
+	mail -u student
+
+8	yum -y install samba
+	mkdir /common
+	setsebool -P samba_export_all_rw=on
+	useradd harry ; pdbedit -a harry
+	vim /etc/samba/smb.conf
+[global]
+workgroup = STAFF
+[common]
+path = /common
+hosts allow = 172.25.0.0/24
+	systemctl restart smb
+	systemctl enable smb
+
+9	mkdir /devops
+	useradd kenji ; pdbedit -a kenji
+	useradd chihiro ; pdbedit -a chihiro
+	setfacl -m u:chihiro:rwx /devops/
+	vim /etc/samba/smb.conf
+[devops]
+path = /devops
+write list = chihiro
+hosts allow = 172.25.0.0/24
+	systemctl restart smb
+
+	yum -y install samba-client cifs-utils
+	smbclient -L serverX
+	mkdir /mnt/dev
+	vim /etc/fstab
+//serverX.example.com/devops /mnt/dev cifs username=kenji,password=atenorth,multiuser,sec=ntlmssp,_netdev 0 0
+	mount -a
+	su - student
+	cifscreds add -u chihiro server0
+	touch /mnt/dev/b.txt
+
+10	lab nfskrb5 setup
+	mkdir -p /public /protected/project
+	chown ldapuser0 /protected/project/
+	wget -O /etc/krb5.keytab http://classroom.example.com/pub/keytabs/server0.keytab
+	vim /etc/exports
+/public 	172.25.0.0/24(ro)
+/protected 	172.25.0.0/24(rw,sec=krb5p)
+	systemctl start nfs-secure-server nfs-server
+	systemctl enable nfs-secure-server nfs-server
+	exportfs -rv
+
+11	lab nfskrb5 setup
+	mkdir -p /mnt/nfsmount /mnt/nfssecure
+	wget -O /etc/krb5.keytab http://classroom.example.com/pub/keytabs/desktop0.keytab
+	systemctl start nfs-secure
+	systemctl enable nfs-secure
+	showmount -e server0
+	vim /etc/fstab
+/protected 	172.25.0.0/24 
+/public 	172.25.0.0/24 
+	vim /etc/fstab
+server0.example.com:/public 	/mnt/nfsmount 	nfs 	_netdev  	0 	0
+server0.example.com:/protected /mnt/nfssecure 	nfs 	sec=krb5p,_netdev 	0 	0
+	mount -a
+	ssh ldapuser0@desktop0
+	kerberos
+	touch /mnt/nfssecure/project/a.txt
+
+12	yum -y install httpd
+	vim /etc/httpd/conf.d/00-default.conf
+<VirtualHost *:80>
+ServerName server0.example.com
+DocumentRoot /var/www/html
+</VirtualHost>
+	cd /var/www/html/
+	wget http://classroom/pub/materials/station.html -O index.html
+	systemctl restart httpd
+	systemctl enable  httpd
+
+13	yum -y install mod_ssl
+	cd /etc/pki/tls/certs/
+	wget http://classroom.example.com/pub/example-ca.crt
+	wget http://classroom.example.com/pub/tls/certs/server0.crt
+	cd /etc/pki/tls/private/
+	wget http://classroom.example.com/pub/tls/private/server0.key
+	vim /etc/httpd/conf.d/ssl.conf
+<VirtualHost _default_:443>
+DocumentRoot 	"/var/www/html"
+ServerName 		server0.example.com:443
+SSLCertificateFile 	/etc/pki/tls/certs/server0.crt
+SSLCertificateKeyFile 	/etc/pki/tls/private/server0.key
+SSLCACertificateFile 	/etc/pki/tls/certs/example-ca.crt
+</VirtualHost>
+	systemctl restart httpd
+
+14	mkdir /var/www/virtual
+	setfacl -m u:harry:rwx /var/www/virtual/
+	cd /var/www/virtual/
+	wget http://classroom.example.com/pub/materials/www.html -O index.html
+	vim /etc/httpd/conf.d/01-www0.conf
+<VirtualHost *:80>
+ServerName www0.example.com
+DocumentRoot /var/www/virtual
+</VirtualHost>
+	systemctl restart httpd
+
+15	
+
+
+
+
+
+
+
+
+
+lun 逻辑单元号logic unit no. 
+initiator发起者
+target目标 存储磁盘
+LUNs的配置是一种把多块独立的硬盘（物理硬盘）按不同的方式组合起来形成一个硬盘组（逻辑硬盘），从而提供比单个硬盘更高的存储性能与数据备份能力的技术。 LUN标识目标中的特定逻辑单元,逻辑单元可以包括多个磁盘
+
+

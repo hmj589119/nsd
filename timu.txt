@@ -1,0 +1,112 @@
+
+wget -O  /etc/krb5.keytab http://classroom/pub/keytabs/serverX.keytab
+
+ssh ldapuser0@desktop0
+
+vnc端口 ::5901
+classroom:
+desktop0                 IN  A 172.25.0.10
+d0                       IN CNAME desktop0.example.com.
+smtp0                    IN CNAME desktop0.example.com.
+imap0                    IN CNAME desktop0.example.com.
+desktop0.example.com.    IN MX 10 smtp0.example.com.
+server0                  IN  A 172.25.0.11
+s0                       IN CNAME server0.example.com.
+www0                     IN CNAME server0.example.com.
+webapp0                  IN CNAME server0.example.com.
+$GENERATE 12-100 vm0-$       A 172.25.0.$
+;IPA entries
+ipa-ca.server0.example.com.     IN CNAME server0.example.com.
+_kerberos.server0       IN TXT SERVER0.EXAMPLE.COM
+_ldap._tcp.server0      IN SRV 0 100 389 server0
+_kerberos._tcp.server0.example.com.     IN SRV 0 100 88 server0
+_kerberos._udp.server0.example.com.     IN SRV 0 100 88 server0
+_kerberos-master._tcp.server0.example.com.      IN SRV 0 100 88 server0
+_kerberos-master._udp.server0.example.com.      IN SRV 0 100 88 server0
+_kpasswd._tcp.server0.example.com.      IN SRV 0 100 464 server0
+_kpasswd._udp.server0.example.com.      IN SRV 0 100 464 server0
+
+
+
+
+
+
+
+
+
+nmcli connection add  type team con-name team0 ifname team0 autoconnect yes config '{"runner": {"name": "activebackup"}}'
+
+nmcli connection add  type team-slave con-name team0-1 ifname  eth1 master team0 
+
+nmcli connection add  type team-slave con-name team0-2 ifname  eth2 master team0 
+
+nmcli connection modify team0 ipv4.method manual ipv4.addresses 172.25.0.20/24  connection.autoconnect yes
+
+nmcli con modify team0-1 connection.autoconnect yes
+nmcli con modify team0-2 connection.autoconnect yes
+
+nmcli connection up team0
+nmcli connection up team0-1
+nmcli connection up team0-2
+nmcli connection show
+
+
+nmcli connection delete team0-2
+nmcli connection delete team0-1
+nmcli connection delete team0
+nmcli connection show
+
+nmcli connection modify "System eth0" ipv6.method manual ipv6.addresses 2003:ac18::305/64
+nmcli connection up "System eth0"
+
+hostnamectl set-hostname server0.example.com
+hostnamectl set-hostname desktop0.example.com
+
+vim /etc/postfix/main.cf
+***************************************
+
+lab nfskrb5 setup
+先安装环境！
+
+
+mkdir -p /public /protected/project
+chown ldapuser0 /protected/project/
+wget -O  /etc/krb5.keytab http://classroom/pub/keytabs/server0.keytab
+
+vim /etc/exports
+	/public  	172.25.0.0/24(ro)
+	/protected 	172.25.0.0/24(rw,sec=krb5p)
+
+systemctl restart nfs-secure-server nfs-server
+systemctl enable  nfs-secure-server nfs-server
+exportfs -rv
+--------------------------------------------------------------------------------------------------------
+mkdir -p /mnt/nfsmount /mnt/nfssecure
+wget -O /etc/krb5.keytab http://classroom/pub/keytabs/desktop0.keytab
+systemctl restart nfs-secure
+systemctl enable  nfs-secure
+showmount -e server0
+vim /etc/fstab
+	server0.example.com:/public 	/mnt/nfsmount  nfs           _netdev 	0 0
+	server0.example.com:/protected /mnt/nfssecure nfs sec=krb5p,_netdev 	0 0
+
+mount -a
+ssh ldapuser0@desktop0
+touch /mnt/nfssecure/project/ldap@desk.txt
+
+------------------------------------------------------------------------------------------------------------
+yum -y install mod_ssl
+http://classroom.example.com/pub/tls/certs/server0.crt
+http://classroom.example.com/pub/tls/private/server0.key
+http://classroom.example.com/pub/example-ca.crt
+--------------------------------------------------------------------------------------
+mkdir /var/www/virtual/
+setfacl -m u:harry:rwx /var/www/virtual/
+wget http://classroom/pub/materials/www.html -O /var/www/virtual/index.html
+
+---------------------------------------------------------------------
+
+skip-networking
+mysql -uroot -patenorth Contacts < users.sql
+
+

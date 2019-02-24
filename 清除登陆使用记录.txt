@@ -1,0 +1,32 @@
+
+#下定决心学Linux，格掉window，直接装了个linux系统在笔记本上，发现Fn+Fx的快捷键关闭鼠标触摸板的功能失效了，光标跳来跳去的，烦死了，其实解决办法很简单
+第一步：打开终端，执行   synclient touchpadoff=1     指令。        Done！！！！搞定！！！当然恢复只要执行  synclient touchpadoff=0   也就行了
+
+但是！！！！！这样未免还是有点麻烦，因为触摸板这东西，相信大家都是很少用的，而且可能还是觉得按Fn+Fx比较方便或者帅一点，其实也很容易实现，只要大家在图形界面找得到键盘快捷键的设置就好了。
+第一步：系统-〉首选项->键盘快捷键
+第二步：添加，   名称为 “关闭触摸板” （可自定义)" ,  命令当然就是   synclient touchpadoff=1   ，应用
+第三步：在动作中找到自己设置的关闭触摸板，然后自己定义快捷键为 Fn+Fx ，搞定！当然快捷键可以自己定义，不一定是Fn+Fx。
+xinput
+xinput disable "SynPS/2 Synaptics TouchPad"
+xinput enable "SynPS/2 Synaptics TouchPad"
+
+
+#清除记录
+echo > /var/log/wtmp //清除用户登录记录
+echo > /var/log/btmp //清除尝试登录记录
+echo>/var/log/lastlog //清除最近登录信息
+echo > /var/log/secure //登录信息
+echo > /var/log/messages
+echo>/var/log/syslog //记录系统日志的服务
+echo>/var/log/xferlog
+echo>/var/log/auth.log
+echo>/var/log/user.log
+cat /dev/null > /var/adm/sylog
+cat /dev/null > /var/log/maillog
+cat /dev/null > /var/log/openwebmail.log
+cat /dev/null > /var/log/mail.info
+echo>/var/run/utmp
+
+#清除操作过的命令记录
+echo > .bash_history //清除保存的用户操作历史记录
+history -cw //清除所有历史
